@@ -345,3 +345,79 @@ def main():
 # call Main function
 if __name__ == "__main__":
   main()
+
+
+# Test the model on test images
+
+import os
+import torch
+from torchvision import transforms
+from PIL import Image
+import pandas as pd
+
+# Define test transformations (same as validation)
+test_transforms = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+# Load the trained model
+def load_model(model_path, num_classes, device):
+    model = CustomRiceNet(num_classes=num_classes)
+    model.load_state_dict(torch.load(model_path)['model_state_dict'])
+    model = model.to(device)
+    model.eval()  # Set to evaluation mode
+    return model
+
+# Function to classify test images
+def classify_images(model, test_dir, label_mapping, device):
+    results = []
+    for image_name in os.listdir(test_dir):
+        image_path = os.path.join(test_dir, image_name)
+        if not image_name.endswith(('.jpg', '.png', '.jpeg')):
+            continue  # Skip non-image files
+
+        # Load and preprocess image
+        img = Image.open(image_path).convert('RGB')
+        img = test_transforms(img).unsqueeze(0).to(device)
+
+        # Get model predictions
+        with torch.no_grad():
+            outputs = model(img)
+            _, predicted_idx = torch.max(outputs, 1)
+
+        # Map index to label
+        predicted_label = {v: k for k, v in label_mapping.items()}[predicted_idx.item()]
+        results.append({'image': image_name, 'predicted_label': predicted_label})
+
+    return results
+
+# Main function
+def main():
+    # Configuration
+    test_dir = '/kaggle/input/paddydoctor/test_images'  # Path to test image directory
+    model_path = 'best_custom_rice_model.pth'  # Path to trained model
+    csv_file = '/kaggle/input/paddydoctor/train.csv'  # Path to CSV used for training
+
+    # Load label mapping
+    data = pd.read_csv(csv_file)
+    label_mapping = {label: idx for idx, label in enumerate(data['label'].unique())}
+
+    # Device setup
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f'Using device: {device}')
+
+    # Load model
+    model = load_model(model_path, num_classes=len(label_mapping), device=device)
+
+    # Classify test images
+    results = classify_images(model, test_dir, label_mapping, device)
+
+    # Save results to CSV
+    output_csv = 'classification_results.csv'
+    pd.DataFrame(results).to_csv(output_csv, index=False)
+    print(f"Classification results saved to {output_csv}")
+
+if __name__ == '__main__':
+    main()
