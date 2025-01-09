@@ -1,0 +1,56 @@
+flowchart TB
+    subgraph Data["Data Processing"]
+        A[Image Dataset] --> B[Data Loading]
+        B --> C[Train-Val Split]
+        C --> D1[Training Set]
+        C --> D2[Validation Set]
+        
+        subgraph Augmentation["Data Augmentation"]
+            E1[Resize 224x224]
+            E2[Random Flips]
+            E3[Random Rotation]
+            E4[Color Jitter]
+            E5[Random Affine]
+            E6[Normalization]
+        end
+        
+        D1 --> Augmentation
+        D2 --> F[Basic Transforms]
+    end
+
+    subgraph Model["Custom RiceNet Architecture"]
+        direction TB
+        subgraph FeatureExtraction["Dual Feature Extraction"]
+            H1[ResNet-18] 
+            H2[DenseNet-121]
+        end
+        
+        subgraph Processing["Feature Processing"]
+            I[Feature Concatenation]
+            J[Attention Mechanism]
+            K[Feature Fusion]
+        end
+        
+        subgraph Classification["Classification"]
+            L1[Dropout Layers]
+            L2[Dense Layers]
+            M[Output Layer]
+        end
+    end
+
+    subgraph Training["Training Pipeline"]
+        N[Custom Loss Function]
+        O[AdamW Optimizer]
+        P[LR Scheduler]
+        Q[Model Checkpointing]
+    end
+
+    Augmentation --> Model
+    F --> Model
+    
+    FeatureExtraction --> Processing
+    Processing --> Classification
+    Classification --> Training
+    
+    Training --> R[Best Model]
+    R --> S[Test Prediction]
